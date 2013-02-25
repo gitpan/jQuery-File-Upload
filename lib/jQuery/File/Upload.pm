@@ -13,7 +13,7 @@ use Cwd 'abs_path';
 use Digest::MD5 qw(md5_hex);
 use URI;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 my %errors =  (
 	'_validate_max_file_size' => 'File is too big',
@@ -59,8 +59,11 @@ sub new {
 		delete_params => [],
 
 		upload_dir => undef,
+		thumbnail_upload_dir => undef,
 		upload_url_base => undef,
+		thumbnail_url_base => undef,
 		relative_url_path => '/files',
+		thumbnail_relative_url_path => undef,
 		delete_url => undef,
 
 		data => {},
@@ -109,9 +112,9 @@ sub new {
 sub upload_dir { 
 	my $self = shift;
 	     
-    if (@_) {
-        $self->{upload_dir} = shift;
-    }
+  if (@_) {
+ 		$self->{upload_dir} = shift;
+  }
 	
 	#set upload_dir to directory of this script if not provided
 	if(!(defined $self->{upload_dir})) { 
@@ -123,12 +126,27 @@ sub upload_dir {
 	return $self->{upload_dir};
 }
 
+sub thumbnail_upload_dir { 
+	my $self = shift;
+	     
+  if (@_) {
+	  $self->{thumbnail_upload_dir} = shift;
+  }
+	
+	#set upload_dir to directory of this script if not provided
+	if(!(defined $self->{thumbnail_upload_dir})) { 
+			$self->{thumbnail_upload_dir} = $self->upload_dir;
+	}
+
+	return $self->{thumbnail_upload_dir};
+}
+
 sub upload_url_base { 
 	my $self = shift;
 	     
-    if (@_) {
-        $self->{upload_url_base} = shift;
-    }
+  if (@_) {
+  	$self->{upload_url_base} = shift;
+  }
 	
 	if(!(defined $self->{upload_url_base})) { 
 		my $url = $self->script_url;
@@ -140,6 +158,29 @@ sub upload_url_base {
 	return $self->{upload_url_base};
 }
 
+sub thumbnail_url_base { 
+	my $self = shift;
+	     
+	if (@_) {
+ 	 $self->{thumbnail_url_base} = shift;
+  }
+	
+	if(!(defined $self->{thumbnail_url_base})) { 
+		if(defined $self->thumbnail_relative_url_path) { 
+			my $url = $self->script_url;
+		
+			$url =~ s/(.*)\/.*/$1/;
+			$self->{thumbnail_url_base} = $url . $self->thumbnail_relative_url_path;
+		}
+		else {
+			$self->{thumbnail_url_base} = $self->upload_url_base;
+		}
+	}
+
+	return $self->{thumbnail_url_base};
+}
+
+
 sub relative_url_path { 
 	my $self = shift;
 
@@ -148,6 +189,16 @@ sub relative_url_path {
 	}
 
 	return $self->{relative_url_path};
+}
+
+sub thumbnail_relative_url_path { 
+	my $self = shift;
+
+	if(@_) { 
+		$self->{thumbnail_relative_url_path} = shift;
+	}
+
+	return $self->{thumbnail_relative_url_path};
 }
 
 sub field_name { 
@@ -779,15 +830,16 @@ sub _delete {
 		for(@{$self->scp}) { 
 			
 			my $ssh2 = $self->_auth_user($_);
+			$_->{thumbnail_upload_dir} = $_->{upload_dir} if $_->{thumbnail_upload_dir} eq '';
 
 			my $sftp = $ssh2->sftp;
 			$sftp->unlink($_->{upload_dir} . '/' . $filename);
-			$sftp->unlink($_->{upload_dir} . '/' . $thumbnail_filename) if $image_yn eq 'y';
+			$sftp->unlink($_->{thumbnail_upload_dir} . '/' . $thumbnail_filename) if $image_yn eq 'y';
 		}		
 	}
 	else { 
 		unlink $self->upload_dir . '/' . $filename;
-		unlink($self->upload_dir . '/' . $self->thumbnail_prefix . $filename) if $image_yn eq 'y';
+		unlink($self->thumbnail_upload_dir . '/' . $self->thumbnail_prefix . $filename) if $image_yn eq 'y';
 	}
 }
 
@@ -858,7 +910,7 @@ sub _set_urls {
 	my $self = shift;
 
 	if($self->is_image) { 
-		$self->{thumbnail_url} = $self->upload_url_base . '/' . $self->thumbnail_filename;
+		$self->{thumbnail_url} = $self->thumbnail_url_base . '/' . $self->thumbnail_filename;
 	}
 	$self->{url} = $self->upload_url_base . '/' . $self->filename;
 }
@@ -903,8 +955,10 @@ sub _save_scp {
 	for(@{$self->scp}) { 
 		die "Must provide a host to scp" if $_->{host} eq '';
 
+		$_->{thumbnail_upload_dir} = $_->{upload_dir} if $_->{thumbnail_upload_dir} eq '';
+
 		my $path = $_->{upload_dir} . '/' . $self->filename;
-		my $thumb_path = $_->{upload_dir} . '/' . $self->thumbnail_filename;
+		my $thumb_path = $_->{thumbnail_upload_dir} . '/' . $self->thumbnail_filename;
 
 		if(($_->{user} ne '' and $_->{public_key} ne '' and $_->{private_key} ne '') or ($_->{user} ne '' and $_->{password} ne '')) { 
 			my $ssh2 = $self->_auth_user($_);
@@ -960,7 +1014,7 @@ sub _save_local {
 		rename $self->{tmp_thumb_path}, $self->absolute_thumbnail_filename;
 	}
 	elsif(defined $self->ctx) { 
-		$self->ctx->link_to($self->absolute_filename);
+		$self->{upload}->link_to($self->absolute_filename);
 	}
 	else { 
 		my $io_handle = $self->{fh}->handle;
@@ -1150,7 +1204,7 @@ sub _set_absolute_filenames {
 	my $self = shift;
 
 	$self->absolute_filename($self->upload_dir . '/' . $self->filename) unless $self->absolute_filename;
-	$self->absolute_thumbnail_filename($self->upload_dir . '/' . $self->thumbnail_filename) unless $self->absolute_thumbnail_filename;
+	$self->absolute_thumbnail_filename($self->thumbnail_upload_dir . '/' . $self->thumbnail_filename) unless $self->absolute_thumbnail_filename;
 }
 
 sub _set_file_type { 
@@ -1315,7 +1369,8 @@ sub _create_thumbnail {
    
   my $im = $self->{image_magick}->Clone;
    
-  my $output  = $self->{tmp_thumb_path} = $self->tmp_dir . '/' . $self->thumbnail_filename;
+	#thumb is added at beginning of tmp_thumb_path as to not clash with the original image file path
+  my $output  = $self->{tmp_thumb_path} = $self->tmp_dir . '/thumb_' . $self->thumbnail_filename;
   my $width   = $self->thumbnail_width;
   my $height  = $self->thumbnail_height;
  
@@ -1380,7 +1435,8 @@ sub _create_tmp_image {
   my $self = shift;
   my $im = $self->{image_magick};
    
-  my $output  = $self->{tmp_file_path} = $self->tmp_dir . '/' . $self->filename;
+	#main_ is added as to not clash with thumbnail tmp path if thumbnail_prefix = '' and they have the same name
+  my $output  = $self->{tmp_file_path} = $self->tmp_dir . '/main_' . $self->filename;
   my $quality = $self->thumbnail_quality;
   my $format  = $self->thumbnail_format;
 
@@ -1608,6 +1664,22 @@ However, if you are using L<Catalyst>, depending on how you're running L<Catalys
 (i.e. mod_perl, fastcgi, etc.) the generated default might be kind of strange.
 So if you are using L<Catalyst> and you want to upload to the same server
 that jQuery::File::Upload is running on, it's best to just manually set this.
+Make sure that the user running your script can write to the directory you
+specify.
+
+=head3 thumbnail_upload_dir
+
+  $j_fu->thumbnail_upload_dir('/home/user/public_html/files/thumbs');
+
+This can be used to set the upload directory form thumbnails. The default
+is L<upload_dir|/"upload_dir">. If you change this, that will make thumbnails
+have a different base url than L<upload_url_base|/"upload_url_base">. Make
+sure to change L<thumbnail_url_base|/"thumbnail_url_base"> to match this accordingly.
+If you would like images and thumbnails to have the same name but just be in
+different directories, make sure you set L<thumbnail_prefix|/"thumbnail_prefix">
+to ''. This should not end with a slash.
+Make sure that the user running your script can write to the directory you
+specify.
 
 =head3 upload_url_base
 
@@ -1627,7 +1699,21 @@ Which means that a file url would look like this:
 
   http://www.mydomain.com/files/file.txt
 
-=head3 realtive_url_path
+=head3 thumbnail_url_base
+
+  $j_fu->thumbnail_url_base('http://www.mydomain.com/files/thumbs');
+
+Sets the url base for thumbnails. Should not end with a slash.
+The default is L<upload_url_base|/"upload_url_base">.
+Resulting thumbnail urls would look like:
+
+  http://www.mydomain.com/files/thumbs/thumb_image.jpg
+
+However, if L<thumbnail_relative_url_base|/"thumbnail_relative_url_base">
+is set, the default will be the current url with the thumbnail 
+relative base at the end.
+
+=head3 relative_url_path
 
   $j_fu->relative_url_path('/files');
 
@@ -1644,6 +1730,27 @@ and then all files will go after /files. The default for this is /files,
 which is why upload_url_base has the default /files at the end. If
 your location for the images is not relative, i.e. it is located
 at a different domain, then just set L<upload_url_base|/"upload_url_base">
+to get the url_base you want. There should not be 
+a slash at the end.
+
+=head3 thumbnail_relative_url_path
+
+  $j_fu->thumbnail_relative_url_path('/files/thumbs');
+
+This sets the thumbnail relative url path for your files relative to the directory
+your script is currently running in. For example:
+
+  http://www.mydomain.com/upload.cgi
+
+yields:
+
+  http://www.mydomain.com/files/thumbs
+
+and then all thumbnails will go after /files/thumbs. The default for this is nothing,
+so then the thumbnail_url will just fall back on whatever the value of 
+L<upload_url_base|/"upload_url_base"> is.
+If your location for thumbnail images is not relative, i.e. it is located
+at a different domain, then just set L<thumbnail_url_base|/"thumbnail_url_base">
 to get the url_base you want. There should not be 
 a slash at the end.
 
@@ -1698,7 +1805,7 @@ This method takes in an arrayref of hashrefs, where each hashref is a remote hos
 SCPing the uploaded files to remote hosts could be useful if say you hosted your images on a different server
 than the one doing the uploading.
 
-=head4 Options
+=head4 SCP OPTIONS
 
 =over 4
 
@@ -1721,6 +1828,10 @@ password - used along with user to authenticate with remote server. Not needed i
 =item
 
 upload_dir (REQUIRED) - the directory you want to scp to on the remote server. Should not end with a slash
+
+=item
+
+thumbnail_upload_dir - Will default to upload_dir. You only need to provide this if your thumbnails are stored in a different directory than regular images. Should not end with a slash
 
 =back
 
@@ -2051,7 +2162,7 @@ an arrayref of hashrefs, where each hashref is a file. After this
 method is called, you will need to call L<print_response|/"print_response">
 or L<handle_request|/"handle_request"> with a 1 to print out the JSON.
 
-=head4 OPTIONS
+=head4 GENERATE_OUTPUT OPTIONS
 
 =over 4
 
@@ -2065,7 +2176,7 @@ size (REQUIRED) - size in bytes
 
 =item
 
-image - 'y' or 'n'. Necessary if file is image and you would like thumbnail to be deleted with file
+image - 'y' or 'n'. Necessary if file is image and you would like thumbnail to be deleted with file. Also, needed if you want thumbnail to be displayed by jQuery File Upload
 
 =item
 
