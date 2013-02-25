@@ -3,3 +3,6 @@ Revision history for jQuery-File-Upload
 0.01    Date/time
         First version, released on an unsuspecting world.
 
+0.02
+
+	added methods data and relative_url_path

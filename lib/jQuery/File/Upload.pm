@@ -13,7 +13,7 @@ use Cwd 'abs_path';
 use Digest::MD5 qw(md5_hex);
 use URI;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 my %errors =  (
 	'_validate_max_file_size' => 'File is too big',
@@ -60,7 +60,10 @@ sub new {
 
 		upload_dir => undef,
 		upload_url_base => undef,
+		relative_url_path => '/files',
 		delete_url => undef,
+
+		data => {},
 
 		#callbacks
 		post_delete => sub {},
@@ -130,11 +133,21 @@ sub upload_url_base {
 	if(!(defined $self->{upload_url_base})) { 
 		my $url = $self->script_url;
 		
-				$url =~ s/(.*)\/.*/$1/;
-		$self->{upload_url_base} = $url . '/files';
+		$url =~ s/(.*)\/.*/$1/;
+		$self->{upload_url_base} = $url . $self->relative_url_path;
 	}
 
 	return $self->{upload_url_base};
+}
+
+sub relative_url_path { 
+	my $self = shift;
+
+	if(@_) { 
+		$self->{relative_url_path} = shift;
+	}
+
+	return $self->{relative_url_path};
 }
 
 sub field_name { 
@@ -525,6 +538,16 @@ sub script_url {
 	return $self->{script_url};
 }
 
+sub data { 
+	my $self = shift;
+
+	if(@_) { 
+		$self->{data} = shift;
+	}
+
+	return $self->{data};
+}
+
 #GETTERS 
 sub output { shift->{output} }
 sub url { shift->{url} }
@@ -788,7 +811,8 @@ sub _delete_url {
 	my $uri = URI->new($url);
 
 	my $image_yn = $self->is_image ? 'y' : 'n';
-	push @{$self->delete_params}, ('filename',$self->filename,'image',$image_yn,'thumbnail_filename',$self->thumbnail_filename);
+	push @{$self->delete_params}, ('filename',$self->filename,'image',$image_yn);
+	push @{$self->delete_params}, ('thumbnail_filename',$self->thumbnail_filename) if $self->is_image;
 
 	$uri->query_form($self->delete_params);
 
@@ -1603,6 +1627,26 @@ Which means that a file url would look like this:
 
   http://www.mydomain.com/files/file.txt
 
+=head3 realtive_url_path
+
+  $j_fu->relative_url_path('/files');
+
+This sets the relative url path for your files relative to the directory
+your script is currently running in. For example:
+
+  http://www.mydomain.com/upload.cgi
+
+yields:
+
+  http://www.mydomain.com/files
+
+and then all files will go after /files. The default for this is /files,
+which is why upload_url_base has the default /files at the end. If
+your location for the images is not relative, i.e. it is located
+at a different domain, then just set L<upload_url_base|/"upload_url_base">
+to get the url_base you want. There should not be 
+a slash at the end.
+
 =head3 field_name
 
   $j_fu->field_name('files[]');
@@ -1679,6 +1723,8 @@ password - used along with user to authenticate with remote server. Not needed i
 upload_dir (REQUIRED) - the directory you want to scp to on the remote server. Should not end with a slash
 
 =back
+
+You can check L<Net::SSH2> for more information on connecting to the remote server.
 
 =head3 max_file_size
 
@@ -1924,6 +1970,21 @@ running under. jQuery::File::Upload then uses this value to generate
 other parts of the output. jQuery::File::Upload in most cases is able
 to figure this out on its own, however if you are experiencing issues
 with things such as url generation, try setting this manually.
+
+=head3 data
+
+  $j_fu->data({
+            dbh => $dbh,
+            my_var = $var,
+            arr = [],
+            self => $self, #maybe useful for Catalyst
+        });
+
+This method can be populated with whatever you like. Its purpose is
+if you need to get access to other data in one of your
+L<pre/post request|/"PRE/POST REQUEST METHODS">. This way you
+can access any outside data you need by calling L<data|/"data"> on
+the jQuery::File::Upload object that you are passed.
 
 =head2 JUST GETTERS
 
