@@ -12,3 +12,12 @@ Revision history for jQuery-File-Upload
 	added methods thumbnail_upload_dir, thumbnail_url_base, and thumbnail_url_base. Also fixed
 	bug where if thumbnail_prefix was set to '' and thumbnail and original filenames were the same,
   then the original file would overwrite the thumbnail.
+
+0.04
+
+	pod test failed, so I fixed it. Was missing documentation for these two methods:
+
+	show_client_filename
+	thumbnail_quality
+
+	Also, added a little bit about how you can get access to the ctx object in the PRE/POST METHODS section.

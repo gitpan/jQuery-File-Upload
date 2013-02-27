@@ -13,7 +13,7 @@ use Cwd 'abs_path';
 use Digest::MD5 qw(md5_hex);
 use URI;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 my %errors =  (
 	'_validate_max_file_size' => 'File is too big',
@@ -1898,6 +1898,13 @@ file is an image. Default is 80.
 This sets the quality of the generated thumbnail. Default is 70 and it
 can be on a scale of 0-100. See L<Image::Magick> for more information.
 
+=head3 thumbnail_quality
+
+  $j_fu->thumbnail_quality(70);
+
+This sets the quality of the thumbnail image. Default is 70 and it
+can be on a scale of 0-100. See L<Image::Magick> for more information.
+
 =head3 thumbnail_format
 
   $j_fu->thumbnail_format('jpg');
@@ -2039,6 +2046,17 @@ will generate it for you.
   my $client_filename = $j_fu->client_filename;
 
 Returns the filename of the file as it was named by the user.
+
+=head3 show_client_filename
+
+  $j_fu->show_client_filename(1);
+
+This can be used to set whether jQuery::File::Upload shows the user the name
+of the file as it looked when they uploaded, or the new name of the file.
+When set to true, the user will see the file as it was named on their computer.
+The default is true, and this is recommended because typically the user's
+filename will look better than the unique one that jQuery::File::Upload generates
+for you.
 
 =head3 use_client_filename
 
@@ -2216,6 +2234,11 @@ options such as L<upload_url_base|/"upload_url_base">.
 
 N.B. The following functions are all passed a jQuery::File::Upload object. And they
 can be passed into L<new|/"new"> as options.
+
+Also, note that since all of these user-defined methods are passed the jQuery::File::Upload object,
+if you are using L<Catalyst> you can just call the L<ctx|/"ctx"> method to get anything
+stored via your context object. For L<Catalyst> users, this makes this a practical (and possibly better)
+alternative to the provided L<data|/"data"> method.
 
 =head3 pre_delete
 
