@@ -25,3 +25,7 @@ Revision history for jQuery-File-Upload
 0.05
 
 	added thumbnail_postfix method
+
+0.06
+
+  added relative_to_host method

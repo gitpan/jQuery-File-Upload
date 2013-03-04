@@ -16,7 +16,7 @@ use URI;
 #use LWP::UserAgent;
 #use LWP::Protocol::https;
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 my %errors =  (
 	'_validate_max_file_size' => 'File is too big',
@@ -68,6 +68,7 @@ sub new {
 		thumbnail_url_base => undef,
 		relative_url_path => '/files',
 		thumbnail_relative_url_path => undef,
+		relative_to_host => undef,
 		delete_url => undef,
 
 		data => {},
@@ -153,13 +154,25 @@ sub upload_url_base {
   }
 	
 	if(!(defined $self->{upload_url_base})) { 
-		my $url = $self->script_url;
-		
-		$url =~ s/(.*)\/.*/$1/;
-		$self->{upload_url_base} = $url . $self->relative_url_path;
+		$self->{upload_url_base} = $self->_url_base . $self->relative_url_path;
 	}
 
 	return $self->{upload_url_base};
+}
+
+sub _url_base { 
+	my $self = shift;
+	my $url;
+		
+	if($self->relative_to_host) {
+		$url = $self->{uri}->scheme . '://' . $self->{uri}->host;
+	}
+	else { 
+		$url = $self->script_url;
+		$url =~ s/(.*)\/.*/$1/;
+	}
+
+	return $url;	
 }
 
 sub thumbnail_url_base { 
@@ -171,10 +184,7 @@ sub thumbnail_url_base {
 	
 	if(!(defined $self->{thumbnail_url_base})) { 
 		if(defined $self->thumbnail_relative_url_path) { 
-			my $url = $self->script_url;
-		
-			$url =~ s/(.*)\/.*/$1/;
-			$self->{thumbnail_url_base} = $url . $self->thumbnail_relative_url_path;
+			$self->{thumbnail_url_base} = $self->_url_base . $self->thumbnail_relative_url_path;
 		}
 		else {
 			$self->{thumbnail_url_base} = $self->upload_url_base;
@@ -204,6 +214,18 @@ sub thumbnail_relative_url_path {
 
 	return $self->{thumbnail_relative_url_path};
 }
+
+sub relative_to_host { 
+	my $self = shift;
+
+	if(@_) { 
+		$self->{relative_to_host} = shift;
+	}
+
+	return $self->{relative_to_host};
+}
+
+
 
 sub field_name { 
 	my $self = shift;
@@ -592,11 +614,7 @@ sub script_url {
 			$self->{script_url} = $self->ctx->request->uri;
 		}
 		else { 
-			my $http = 'http://';
-			if($ENV{HTTPS}) { 
-				$http = 'https://';
-			}
-			$self->{script_url} = "$http$ENV{'HTTP_HOST'}$ENV{'REQUEST_URI'}";
+			$self->{script_url} = $ENV{SCRIPT_URI};
 		}
 	}
 
@@ -880,7 +898,7 @@ sub _delete_url {
 	return if $self->delete_url ne '';
 
 	my $url = $self->script_url;
-	my $uri = URI->new($url);
+	my $uri = $self->{uri};
 
 	my $image_yn = $self->is_image ? 'y' : 'n';
 	push @{$self->delete_params}, ('filename',$self->filename,'image',$image_yn);
@@ -921,6 +939,7 @@ sub _prepare_file_attrs {
 	$self->_set_width;
 	$self->_set_height;
 	$self->_set_num_files_in_dir;
+	$self->_set_uri;
 	$self->_set_urls;
 
 	return 1;
@@ -934,6 +953,13 @@ sub _set_urls {
 	}
 	$self->{url} = $self->upload_url_base . '/' . $self->filename;
 }
+
+sub _set_uri { 
+	my $self = shift;
+	$self->{uri} = URI->new($self->script_url);
+}
+
+
 
 sub _generate_error { 
 	my $self = shift;
@@ -1866,6 +1892,31 @@ If your location for thumbnail images is not relative, i.e. it is located
 at a different domain, then just set L<thumbnail_url_base|/"thumbnail_url_base">
 to get the url_base you want. There should not be 
 a slash at the end.
+
+=head3 relative_to_host
+
+  $j_fu->relative_to_host(1);
+
+If set to 1, this will make L<relative_url_path|/"relative_url_path"> and
+L<thumbnail_relative_url_path|/"thumbnail_relative_url_path"> be relative to
+the host of the script url. For example:
+
+  http://www.mydomain.com/folder/upload.cgi
+
+With a L<relative_url_path|/"relative_url_path"> '/files' would yield:
+
+  http://www.mydomain.com/files
+
+Whereas by default L<relative_url_path|/"relative_url_path"> and
+L<thumbnail_relative_url_path|/"thumbnail_relative_url_path"> are
+relative to the folder the upload script is running in. 
+
+If you use this option, make sure to set L<upload_dir|/"upload_dir">
+(and/or L<thumbnail_upload_dir|/"thumbnail_upload_dir"> if necessary)
+since jQuery::File::Upload can no longer do a relative path
+for saving the file.
+
+Default is undef.
 
 =head3 field_name
 
