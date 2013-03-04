@@ -21,3 +21,7 @@ Revision history for jQuery-File-Upload
 	thumbnail_quality
 
 	Also, added a little bit about how you can get access to the ctx object in the PRE/POST METHODS section.
+
+0.05
+
+	added thumbnail_postfix method

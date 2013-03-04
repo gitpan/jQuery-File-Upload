@@ -13,7 +13,10 @@ use Cwd 'abs_path';
 use Digest::MD5 qw(md5_hex);
 use URI;
 
-our $VERSION = '0.04';
+#use LWP::UserAgent;
+#use LWP::Protocol::https;
+
+our $VERSION = '0.05';
 
 my %errors =  (
 	'_validate_max_file_size' => 'File is too big',
@@ -44,6 +47,7 @@ sub new {
 
 		thumbnail_filename => undef,
 		thumbnail_prefix => 'thumb_',
+		thumbnail_postfix => '',
 		filename => undef,
 		client_filename => undef,
 		show_client_filename => 1,
@@ -366,6 +370,16 @@ sub thumbnail_prefix {
 	return $self->{thumbnail_prefix};
 }
 
+sub thumbnail_postfix { 
+	my $self = shift;
+	     
+    if (@_) {
+        $self->{thumbnail_postfix} = shift;
+    }
+	
+	return $self->{thumbnail_postfix};
+}
+
 sub thumbnail_final_width { 
 	my $self = shift;
 
@@ -669,14 +683,12 @@ sub generate_output {
 			$h{name} = $_->{filename};
 		}
 
-		$self->filename($_->{filename});
-		my ($no_ext) = $self->filename =~ /(.*)\..*/;
-
 		if(exists $_->{thumbnail_filename}) {
 			$self->thumbnail_filename($_->{thumbnail_filename});
 		}
 		else {
-			$self->thumbnail_filename($self->thumbnail_prefix . $no_ext . '.' . $self->thumbnail_format);
+			my $no_ext = $self->_no_ext;
+			$self->thumbnail_filename($self->thumbnail_prefix . $no_ext . $self->thumbnail_postfix . '.' . $self->thumbnail_format);
 		}
 
 		$self->_set_urls;
@@ -691,6 +703,13 @@ sub generate_output {
 	#they should provide image=y or image=n if image
 	my $json = JSON::XS->new->ascii->pretty->allow_nonref;
 	$self->{output} = $json->encode({files => \@arr});
+}
+
+sub _no_ext { 
+	my $self = shift;
+	$self->filename($_->{filename});
+	my ($no_ext) = $self->filename =~ /(.*)\.(.*)/;
+	return $no_ext;
 }
 
 #PRE/POST METHODS
@@ -838,8 +857,9 @@ sub _delete {
 		}		
 	}
 	else { 
+		my $no_ext = $self->_no_ext;
 		unlink $self->upload_dir . '/' . $filename;
-		unlink($self->thumbnail_upload_dir . '/' . $self->thumbnail_prefix . $filename) if $image_yn eq 'y';
+		unlink($self->thumbnail_upload_dir . '/' . $thumbnail_filename) if $image_yn eq 'y';
 	}
 }
 
@@ -1009,13 +1029,16 @@ sub _auth_user {
 sub _save_local { 
 	my $self = shift;
 
+	#if image
 	if($self->is_image) { 
 		rename $self->{tmp_file_path}, $self->absolute_filename;
 		rename $self->{tmp_thumb_path}, $self->absolute_thumbnail_filename;
 	}
+	#if non-image with catalyst
 	elsif(defined $self->ctx) { 
 		$self->{upload}->link_to($self->absolute_filename);
 	}
+	#if non-image with regular CGI perl
 	else { 
 		my $io_handle = $self->{fh}->handle;
 
@@ -1183,7 +1206,7 @@ sub _set_filename {
 	}
 	else { 
 		my $filename = md5_hex($self->client_filename . time() . int(rand(1000))) . time() . $self->filename_salt;
-		$self->thumbnail_filename($self->thumbnail_prefix . $filename . '.' . $self->thumbnail_format) unless $self->thumbnail_filename;
+		$self->thumbnail_filename($self->thumbnail_prefix . $filename . $self->thumbnail_postfix . '.' . $self->thumbnail_format) unless $self->thumbnail_filename;
 
 		if($self->is_image) { 
 			$filename .= '.' . $self->format;
@@ -1450,6 +1473,92 @@ sub _create_tmp_image {
   }
 }
 
+#sub _save_cloud {
+#	my $self = shift;
+#	my $io_handle = $self->{fh}->handle;
+#
+#	#IF IS IMAGE, MUST UPLOAD BOTH IMAGES
+#
+#  my $s_contents;
+#	while (my $bytesread = $io_handle->read($buffer,1024)) {
+#		print OUTFILE $buffer;
+##	}
+#
+#
+##   while(<FILE>)
+#    {
+#     $s_contents .= $_;
+##    }
+#
+##   ### we will call this resource whatever comes after the last /
+#    my $s_resourceName;
+#
+##    if($param->{'path'} =~ /^.*\/(.*)$/)
+#    {
+#     $s_resourceName = $1;
+##    }
+#    else
+#    {
+#     return('fail', "could not parse path: $param->{'path'}");
+##    }
+#
+#    ### should we pass these vars ... or look them up?
+#   my $s_user = '';
+#    my $s_key = '';
+##    my $s_cdn_uri ='';
+#
+#    my $ua = LWP::UserAgent->new;
+#   my $req = HTTP::Request->new(GET => 'https://auth.api.rackspacecloud.com/v1.0');
+##    $req->header('X-Auth-User' => $s_user);
+#    $req->header('X-Auth-Key' => $s_key);
+#
+##    my $res = $ua->request($req);
+#
+#   if ($res->is_success)
+##    {
+#      my $s_url = $res->header('X-Storage-Url') . "/container/" . $s_resourceName;
+#
+##      my $reqPUT = HTTP::Request->new(PUT => $s_url);
+#      $reqPUT->header('X-Auth-Token' => $res->header('X-Auth-Token'));
+#     
+##      $reqPUT->content( $s_contents );
+#
+#     my $resPUT = $ua->request($reqPUT);
+##
+#      if($resPUT->is_success)
+#     {
+##        my $s_returnURI = $s_cdn_uri . "/" . $s_resourceName;
+#        return('pass','passed afaict', $s_returnURI);
+#     }
+##      else
+#      {
+#       my $s_temp = $resPUT->as_string;
+#        $s_temp =~ s/'/\\'/g;
+##        return('fail',"PUT failed with response:$s_temp")
+#      }
+#   }
+##    else
+#    {
+#     my $s_temp = $res->as_string;
+##      $s_temp =~ s/'/\\'/g;
+#      return('fail',"failed with response:$s_temp")
+#   }
+##  }
+#  else
+# {
+##    return("fail","sorry no file found at $param->{'path'}");
+#  }
+#}
+#
+##sub _delete_cloud {
+#	my $self    = shift;
+#  my $request = HTTP::Request->new( 'DELETE', $self->_url,
+#Q					        [ 'X-Auth-Token' => $self->cloudfiles->token ] );
+#	my $response = $self->cloudfiles->_request($request);
+#  confess 'Object ' . $self->name . ' not found' if $response->code == 404;
+#  confess 'Unknown error' if $response->code != 204;
+#}
+
 # Preloaded methods go here.
 
 1;
@@ -1468,6 +1577,10 @@ jQuery::File::Upload - Server-side solution for the L<jQuery File Upload|https:/
   my $j_fu = jQuery::File::Upload->new;
   $j_fu->handle_request;
   $j_fu->print_response;
+
+  #alternatively you can call $j_fu->handle_request(1) and this will call print_response for you.
+  my $j_fu = jQuery::File::Upload->new;
+  $j_fu->handle_request(1);
 
 The above example is the simplest one possible, however it assumes a lot of defaults.
 
@@ -1925,6 +2038,13 @@ See L<Image::Magick> for more information.
 
 Added before the image filename to create the thumbnail unique filename.
 Default is 'thumb_'.
+
+=head3 thumbnail_postfix
+
+  $j_fu->thumbnail_postfix('_thumb');
+
+Added after the image filename to create the thumbnail unique filename.
+Default is ''.
 
 =head3 thumbnail_final_width
 
