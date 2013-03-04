@@ -16,7 +16,7 @@ use URI;
 #use LWP::UserAgent;
 #use LWP::Protocol::https;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 my %errors =  (
 	'_validate_max_file_size' => 'File is too big',
@@ -90,6 +90,7 @@ sub new {
 		max_file_size => undef,
 		min_file_size => 1,
 		accept_file_types => [],
+		require_image => undef,
 		max_width => undef,
 		max_height => undef,
 		min_width => 1,
@@ -301,13 +302,27 @@ sub min_file_size {
 sub accept_file_types { 
 	my $self = shift;
 	     
-    if (@_) {
+  if (@_) {
 		my $a_ref = shift;
 		die "accept_file_types must be an array ref" unless UNIVERSAL::isa($a_ref,'ARRAY');
-        $self->{accept_file_types} = $a_ref;
-    }
+   	$self->{accept_file_types} = $a_ref;
+  }
+
+	if(scalar(@{$self->{accept_file_types}}) == 0 and $self->require_image) { 
+		$self->{accept_file_types} = ['image/jpeg','image/jpg','image/png','image/gif'];
+	}
 	
 	return $self->{accept_file_types};
+}
+
+sub require_image { 
+	my $self = shift;
+	     
+  if (@_) {
+   	$self->{require_image} = shift;
+  }
+	
+	return $self->{require_image};
 }
 
 sub delete_params { 
@@ -1107,7 +1122,7 @@ sub _validate_accept_file_types {
 
 	#if accept_file_types is empty, we except all types
 	#so return true
-	return 1 unless @{$self->{accept_file_types}};
+	return 1 unless @{$self->accept_file_types};
 
 	if(grep { $_ eq $self->{file_type} } @{$self->{accept_file_types}}) { 
 		return 1;
@@ -2019,6 +2034,17 @@ Sets the minimum file size in bytes. Default minimum is 1 byte. to disable a min
 
 Sets what file types are allowed to be uploaded. By default, all file types are allowed. 
 File types should be in the format of the Content-Type header sent on requests.
+
+=head3 require_image
+
+  $j_fu->require_image(1);
+
+If set to 1, it requires that all uploads must be an image. Setting this is equivalent
+to calling:
+  
+  $j_fu->accept_file_types(['image/jpeg','image/jpg','image/png','image/gif']);
+
+Default is undef.
 
 =head3 delete_params
 

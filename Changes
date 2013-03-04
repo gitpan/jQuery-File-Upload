@@ -29,3 +29,7 @@ Revision history for jQuery-File-Upload
 0.06
 
   added relative_to_host method
+
+0.07 
+
+  added require_image method
