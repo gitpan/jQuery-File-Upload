@@ -33,3 +33,7 @@ Revision history for jQuery-File-Upload
 0.07 
 
   added require_image method
+
+0.08
+
+	fixed issue where if should_delete was set to 0 and handle_request was called with a 1, would not handle response correctly because it would never get to print_response call

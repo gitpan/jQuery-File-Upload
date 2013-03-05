@@ -16,7 +16,7 @@ use URI;
 #use LWP::UserAgent;
 #use LWP::Protocol::https;
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 my %errors =  (
 	'_validate_max_file_size' => 'File is too big',
@@ -685,9 +685,10 @@ sub handle_request {
 	}
 	elsif($method eq 'DELETE') { 
 		&{$self->pre_delete}($self); #even though we may not delete, we should give user option to still run code
-		return unless $self->should_delete;
-		$self->_delete;
-		&{$self->post_delete}($self);
+		if($self->should_delete) {
+			$self->_delete;
+			&{$self->post_delete}($self);
+		}
 	}
 	else { 
 		$self->_set_status(405);
