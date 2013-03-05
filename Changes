@@ -50,3 +50,7 @@ Revision history for jQuery-File-Upload
 
   added delete_params as an option for generate_output method
 	fixed issue where calling generate_output would generate null for delete urls if there was more than one file to generate it for. (needed to reset delete_url each time around loop)
+
+0.12
+
+	fixed _set_uri to use Catalyst URI if it already exists. Also, fixed issue where uri was being reused to generate delete_url in _delete_url if generate_output was passed more than one file.

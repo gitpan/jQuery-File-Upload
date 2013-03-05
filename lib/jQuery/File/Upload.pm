@@ -16,7 +16,7 @@ use URI;
 #use LWP::UserAgent;
 #use LWP::Protocol::https;
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 my %errors =  (
 	'_validate_max_file_size' => 'File is too big',
@@ -915,14 +915,19 @@ sub _delete_url {
 	my ($delete_params) = @_;
 
 	my $url = $self->script_url;
-	my $uri = $self->{uri};
+	my $uri = $self->{uri}->clone;
 
 	my $image_yn = $self->is_image ? 'y' : 'n';
-	push @{$self->delete_params}, ('filename',$self->filename,'image',$image_yn);
-	push @{$self->delete_params}, ('thumbnail_filename',$self->thumbnail_filename) if $self->is_image;
-	push @{$self->delete_params}, @$delete_params if $delete_params;
 
-	$uri->query_form($self->delete_params);
+	unless(defined $delete_params and scalar(@$delete_params)) { 
+		$delete_params = [];
+	}
+
+	push @$delete_params, @{$self->delete_params} if @{$self->delete_params};
+	push @$delete_params, ('filename',$self->filename,'image',$image_yn);
+	push @$delete_params, ('thumbnail_filename',$self->thumbnail_filename) if $self->is_image;
+
+	$uri->query_form($delete_params);
 
 	$self->delete_url($uri->as_string);
 
@@ -974,10 +979,14 @@ sub _set_urls {
 
 sub _set_uri { 
 	my $self = shift;
-	$self->{uri} = URI->new($self->script_url);
+	#if catalyst, use URI already made?
+	if(defined $self->ctx) {
+		$self->{uri} = $self->ctx->req->uri;
+	}
+	else {
+		$self->{uri} = URI->new($self->script_url);
+	}
 }
-
-
 
 sub _generate_error { 
 	my $self = shift;
