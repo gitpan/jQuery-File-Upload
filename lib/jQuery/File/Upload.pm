@@ -16,7 +16,7 @@ use URI;
 #use LWP::UserAgent;
 #use LWP::Protocol::https;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 my %errors =  (
 	'_validate_max_file_size' => 'File is too big',
@@ -824,15 +824,9 @@ sub _clear {
 	$self->{height} = undef;
 	$self->{num_files_in_dir} = undef;
 	$self->{output} = undef;
-	$self->{filename} = undef;
 	$self->{client_filename} = undef;
 	$self->{tmp_thumb_path} = undef;
 	$self->{tmp_file_path} = undef;
-	$self->{delete_url} = undef;
-	$self->{filename} = undef;
-	$self->{thumbnail_filename} = undef;
-	$self->{absolute_filename} = undef;
-	$self->{absolute_thumbnail_filename} = undef;
 }
 
 sub _post { 
@@ -2212,7 +2206,9 @@ Returns the resulting filename after processing the request.
 You can also set the filename to use for this request before you call
 L<handle_request|/"handle_request">. However, unless you're sure
 that you are going to give the file a unique name, you should
-just let jQuery::File::Upload generate the filename.
+just let jQuery::File::Upload generate the filename. Please note
+that if you choose your own filename, you do have to manually set 
+L<thumbnail_filename|/"thumbnail_filename">
 
 =head3 absolute_filename
 

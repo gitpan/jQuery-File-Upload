@@ -37,3 +37,7 @@ Revision history for jQuery-File-Upload
 0.08
 
 	fixed issue where if should_delete was set to 0 and handle_request was called with a 1, would not handle response correctly because it would never get to print_response call
+
+0.09
+
+	fixed issue where the _clear method would delete some initial passed in values, such as filename and thumbnail_filename
