@@ -16,7 +16,7 @@ use URI;
 #use LWP::UserAgent;
 #use LWP::Protocol::https;
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 my %errors =  (
 	'_validate_max_file_size' => 'File is too big',
@@ -732,9 +732,12 @@ sub generate_output {
 		$h{url} = $_->{url} eq '' ? $self->url : $_->{url};
 		$h{thumbnail_url} = $_->{thumbnail_url} eq '' ? $self->thumbnail_url : $_->{thumbnail_url};
 
-		$h{delete_url} = $_->{'delete_url'} eq '' ? $self->_delete_url : $_->{'delete_url'};
+		$h{delete_url} = $_->{'delete_url'} eq '' ? $self->_delete_url($_->{delete_params}) : $_->{'delete_url'};
 		$h{delete_type} = 'DELETE';
 		push @arr, \%h;
+
+		#reset for the next time around
+		$self->delete_url('');
 	}
 
 	#they should provide image=y or image=n if image
@@ -909,6 +912,7 @@ sub _get_param {
 sub _delete_url { 
 	my $self = shift;
 	return if $self->delete_url ne '';
+	my ($delete_params) = @_;
 
 	my $url = $self->script_url;
 	my $uri = $self->{uri};
@@ -916,6 +920,7 @@ sub _delete_url {
 	my $image_yn = $self->is_image ? 'y' : 'n';
 	push @{$self->delete_params}, ('filename',$self->filename,'image',$image_yn);
 	push @{$self->delete_params}, ('thumbnail_filename',$self->thumbnail_filename) if $self->is_image;
+	push @{$self->delete_params}, @$delete_params if $delete_params;
 
 	$uri->query_form($self->delete_params);
 
@@ -2416,6 +2421,11 @@ thumbnail_url - url used for thumbnail. If not provided, will be generated with 
 delete_url - url that will be called by L<jQuery File Upload|https://github.com/blueimp/jQuery-File-Upload/> to
 delete the file. It's better to just let jQuery::File::Upload generate this and use L<delete_params|/"delete_params">
 if you want to set your own parameters for the delete url.
+
+=item
+
+delete_params - The format of this is just like L<delete_params|/"delete_params">. It takes [key,value] pairs. 
+Any values here will be added in addition to any global L<delete_params|/"delete_params"> that you set.
 
 =item
 

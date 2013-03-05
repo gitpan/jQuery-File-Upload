@@ -45,3 +45,8 @@ Revision history for jQuery-File-Upload
 0.10
 
   fixed issue where calling generate_output may cause an error depending on what you passed into it (essentially if _set_uri ended up not being called). Fixed this by calling it manually.
+
+0.11
+
+  added delete_params as an option for generate_output method
+	fixed issue where calling generate_output would generate null for delete urls if there was more than one file to generate it for. (needed to reset delete_url each time around loop)
