@@ -41,3 +41,7 @@ Revision history for jQuery-File-Upload
 0.09
 
 	fixed issue where the _clear method would delete some initial passed in values, such as filename and thumbnail_filename
+
+0.10
+
+  fixed issue where calling generate_output may cause an error depending on what you passed into it (essentially if _set_uri ended up not being called). Fixed this by calling it manually.

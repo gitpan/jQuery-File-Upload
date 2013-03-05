@@ -16,7 +16,7 @@ use URI;
 #use LWP::UserAgent;
 #use LWP::Protocol::https;
 
-our $VERSION = '0.09';
+our $VERSION = '0.10';
 
 my %errors =  (
 	'_validate_max_file_size' => 'File is too big',
@@ -700,6 +700,9 @@ sub handle_request {
 sub generate_output { 
 	my $self = shift;
 	my ($arr_ref) = @_;
+
+	#necessary if we are going to use _url_base via thumbnail_url_base and upload_url_base
+	$self->_set_uri;
 
 	my @arr;
 	for(@$arr_ref) { 
