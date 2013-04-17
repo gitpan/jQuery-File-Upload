@@ -16,7 +16,7 @@ use URI;
 #use LWP::UserAgent;
 #use LWP::Protocol::https;
 
-our $VERSION = '0.14';
+our $VERSION = '0.15';
 
 my %errors =  (
 	'_validate_max_file_size' => 'File is too big',
@@ -656,6 +656,7 @@ sub is_image { shift->{is_image} }
 sub print_response { 
 	my $self = shift;
 
+	my $content_type = 'text/plain';
 	if(defined $self->ctx) { 
 
 		#thanks to Lukas Rampa for this suggestion
