@@ -16,7 +16,7 @@ use URI;
 #use LWP::UserAgent;
 #use LWP::Protocol::https;
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 my %errors =  (
 	'_validate_max_file_size' => 'File is too big',
@@ -655,7 +655,12 @@ sub is_image { shift->{is_image} }
 #OTHER METHODS
 sub print_response { 
 	my $self = shift;
-	my $content_type = 'application/json';
+
+	#thanks to Lukas Rampa for this suggestion
+	my $content_type = 'text/plain';
+  if ($c->req->headers->header('Accept') =~ qr(application/json) ) {
+	  $content_type = 'application/json';
+  }
 
 	if(defined $self->ctx) { 
 		$self->ctx->stash->{current_view} = '';
